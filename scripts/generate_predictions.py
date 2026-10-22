@@ -25,9 +25,9 @@ def generate_predictions(training_targets):
     if list(training_targets.columns) != required_columns:
         raise ValueError("Unexpected training target columns")
 
-    if len(training_targets) != TRAIN_SIZE:
+    if len(training_targets) < CPU_WINDOW:
         raise ValueError(
-            f"Expected {TRAIN_SIZE} training observations"
+            f"At least {CPU_WINDOW} training observations are required"
         )
 
     training_targets = training_targets.sort_values(

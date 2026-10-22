@@ -79,15 +79,36 @@ def test_predictions_use_only_training_history():
     )
 
 
-def test_invalid_training_length():
-    training = make_training_data().iloc[:-1]
+def test_insufficient_training_history():
+    """Fewer than 12 observations must be rejected."""
+    training = make_training_data().iloc[:11]
 
     try:
         generate_predictions(training)
-    except ValueError:
-        pass
+    except ValueError as exc:
+        assert "At least 12" in str(exc)
     else:
         raise AssertionError(
-            "Expected ValueError for incorrect training length"
+            "Expected ValueError for fewer than 12 observations"
         )
+
+
+def test_variable_length_training_history():
+    """The model should accept 12 valid observations."""
+    training = make_training_data().iloc[:12]
+
+    predictions = generate_predictions(training)
+
+    assert len(predictions) == 24
+    assert predictions["timestamp"].iloc[0] == (
+        training["timestamp"].iloc[-1] + 300
+    )
+
+    expected_cpu = training[
+        "aggregate_cpu_utilization"
+    ].iloc[-12:].mean()
+
+    assert (
+        predictions["aggregate_cpu_utilization"] == expected_cpu
+    ).all()
 
