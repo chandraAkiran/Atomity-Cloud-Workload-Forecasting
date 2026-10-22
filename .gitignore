@@ -24,3 +24,8 @@ __pycache__/
 
 # Generated analysis outputs
 reports/training_targets.csv
+
+# Generated baseline evaluation results
+reports/baseline_fold_metrics.csv
+reports/baseline_peak_metrics.csv
+reports/baseline_summary.csv
