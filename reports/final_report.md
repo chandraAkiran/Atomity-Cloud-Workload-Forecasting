@@ -41,7 +41,7 @@ An **expanding-window** validation scheme used identical 24-step evaluation inte
 | CPU model | Validation MAE (pp) | Validation RMSE (pp) |
 |---|---:|---:|
 | Persistence | 0.2082 | 0.2566 |
-| **Moving average, 12 observations** | **0.1784** | **0.2243** |
+| Moving average, 12 observations | 0.1784 | 0.2243 |
 | Linear trend, 24 observations | 0.3656 | 0.4336 |
 | Direct multi-output Ridge | 0.3778 | 0.4257 |
 
@@ -49,10 +49,10 @@ The moving average improves mean validation MAE by approximately **14.32% relati
 
 The frozen model generates a constant **9.2163695%** fleet-average CPU forecast and **10,000** active VMs for all 24 holdout timestamps. Comparison with actual final-holdout readings gives:
 
-| Target | Holdout MAE | Holdout RMSE | Normalized MAE |
-|---|---:|---:|---:|
-| Active VM count | 0 | 0 | 0% |
-| Aggregate VM CPU utilization | **0.123004 pp** | **0.161271 pp** | **1.327%** |
+| Target | MAE | RMSE | Normalized MAE |
+|:---|---:|---:|---:|
+| VM count | 0 | 0 | 0% |
+| Fleet CPU | 0.1230 pp | 0.1613 pp | 1.327% |
 
 The holdout’s actual mean VM CPU ranged from **8.983613%** to **9.635990%**; mean forecast bias (`predicted - actual`) was **−0.052618 pp**. The final holdout happened to be easier than the average validation fold. It spans only two hours, so this result should not be extrapolated to longer horizons or other workload regimes.
 
