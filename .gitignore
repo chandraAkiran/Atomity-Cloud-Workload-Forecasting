@@ -2,3 +2,25 @@
 .venv/
 .pytest_cache/
 __pycache__/
+# Local challenge dataset
+challenge_data/*.csv.gz
+challenge_data/DATA_CARD.md
+challenge_data/SHA256SUMS
+data-v1.tar.gz
+
+# Downloaded dataset archives
+data-v1.tar
+data-v1.tar.gz
+
+# macOS files
+.DS_Store
+**/.DS_Store
+
+# Python environment
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Generated analysis outputs
+reports/training_targets.csv
