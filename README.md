@@ -1,73 +1,64 @@
-# Cloud Workload Forecasting Challenge
 
-AI/ML take-home challenge built from the **Microsoft Azure Public Dataset V2** VM trace.
+# Cloud Workload Forecasting & Analysis
 
-## Start here
+AI/ML take-home assignment for Atomity using the Microsoft Azure
+Public Dataset V2 curated VM trace.
 
-1. Read [`ASSIGNMENT.md`](ASSIGNMENT.md).
-2. Read [`DATASET.md`](DATASET.md).
-3. Download the **`data-v1` GitHub Release** dataset and extract it as `challenge_data/`.
-4. Read [`SUBMISSION.md`](SUBMISSION.md).
-5. Implement your analysis and forecasting pipeline.
+## Project overview
 
-The challenge dataset is distributed as a versioned GitHub Release rather than committed to the repository. The `data-v1` release contains the fixed curated dataset used for this assignment.
+This project forecasts cloud workload demand over a two-hour horizon
+using five-minute VM CPU observations.
 
-## Environment setup
+Forecast targets:
+- `active_vm_count`: number of distinct VMs reporting CPU data.
+- `aggregate_cpu_utilization`: mean VM-level average CPU utilization (%).
 
-Python **3.11 or newer** is required.
+The dataset contains 10,000 VMs, 134 timestamps, and 1,340,000
+CPU observations.
 
-Create a virtual environment:
+The first 110 timestamps are used for model development.
+The final 24 timestamps are reserved for holdout evaluation.
 
-### Linux / macOS
+## Key results
+
+| Metric | Result |
+|---|---:|
+| Selected CPU model | 12-step moving average |
+| Active VM model | Persistence |
+| CPU validation MAE | 0.1784 percentage points |
+| CPU validation RMSE | 0.2243 percentage points |
+| Improvement over persistence MAE | 14.32% |
+| Final holdout CPU MAE | 0.1230 percentage points |
+| Final holdout CPU RMSE | 0.1613 percentage points |
+| Final holdout normalized CPU MAE | 1.327% |
+| Final holdout VM-count MAE | 0 |
+
+The selected CPU forecast is 9.21637%, with 10,000 active VMs
+at each of the 24 future timestamps.
+
+## Installation
+
+Requirements: Python 3.11 or newer.
 
 ```bash
+git clone https://github.com/chandraAkiran/Atomity-Cloud-Workload-Forecasting.git
+cd Atomity-Cloud-Workload-Forecasting
+
 python3 -m venv .venv
 source .venv/bin/activate
-```
 
-### Windows PowerShell
-
-```powershell
-py -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-### Windows Command Prompt
-
-```cmd
-py -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-Install the project and development dependencies:
-
-```bash
-python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 ```
 
-Verify the installation:
+## Download the dataset
 
-```bash
-python -m pytest -q
-```
+Download the official `data-v1` release:
 
-The repository includes a small test suite covering the starter forecasting utilities. Run it before beginning the assignment.
+https://github.com/atomityhq/forecasting-challenge/releases/tag/data-v1
 
-## Dataset download
+Extract the supplied files into `challenge_data/`.
 
-The hiring dataset is distributed as the fixed `data-v1` release of this repository.
-
-**Download:** [Azure Dataset v1 Release](https://github.com/atomityhq/forecasting-challenge/releases/tag/data-v1)
-
-Download `data-v1.tar.gz` from the release and extract it into the repository as `challenge_data/`:
-
-```bash
-mkdir -p challenge_data
-tar -xzf data-v1.tar.gz -C challenge_data
-```
-
-The resulting layout is:
+Expected files:
 
 ```text
 challenge_data/
@@ -77,53 +68,114 @@ challenge_data/
 └── SHA256SUMS
 ```
 
-Verify the dataset before starting the assignment:
+On macOS, verify the extracted checksums:
 
 ```bash
 cd challenge_data
-sha256sum -c SHA256SUMS
+shasum -a 256 -c SHA256SUMS
+cd ..
 ```
 
-You should see:
+The large source dataset is intentionally excluded from Git.
 
-```text
-vm_cpu_readings.csv.gz: OK
-vm_metadata.csv.gz: OK
-DATA_CARD.md: OK
-```
+## Reproduce the forecasts
 
-The release is a real, curated subset of the Microsoft Azure Public Dataset V2. It is not synthetic data.
-
-The dataset contains 10,000 VMs with 134 CPU measurements per VM at five-minute intervals, for a total of 1,340,000 CPU observations.
-
-Use the exact `data-v1` release provided for this assignment. Do not substitute another dataset or a different version of the Azure Public Dataset.
-
-## What you are solving
-
-The underlying data contains anonymized VM workload telemetry sampled every five minutes. Your job is to understand the workload and build a defensible forecasting pipeline for near-term aggregate demand.
-
-The challenge is intentionally open-ended. We evaluate reasoning, time-series methodology, leakage prevention, error analysis, reproducibility, and the quality of your operational conclusions—not just model complexity.
-
-## Expected environment
-
-Python 3.11+ is recommended.
+Run the full training and forecast-generation workflow:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e '.[dev]'
-pytest -q
+python scripts/run_pipeline.py
 ```
 
-Model dependencies are intentionally not prescribed. Add only what you need and document them.
+This command:
+1. Inspects the dataset and constructs timestamp-level targets.
+2. Runs training-only exploratory analysis.
+3. Evaluates temporal forecasting baselines.
+4. Evaluates the Ridge regression alternative.
+5. Generates `predictions.csv` from the first 110 timestamps.
 
-## Source
+The holdout labels are not used for selecting or generating forecasts.
 
-Microsoft Azure Public Dataset V2:
-https://github.com/Azure/AzurePublicDataset
+The generated file contains exactly 24 rows with columns:
 
-The official V2 documentation describes a 30-day VM trace with five-minute CPU readings, VM metadata, and encrypted subscription/deployment/VM identifiers. The full upstream trace is much larger than this challenge release.
+```text
+timestamp,active_vm_count,aggregate_cpu_utilization
+```
 
-## Submission
+## Test the project
 
-Submit your work as a repository or archive according to [`SUBMISSION.md`](SUBMISSION.md).
+```bash
+python -m pytest -q
+```
+
+## Evaluate the frozen holdout predictions
+
+After model selection and prediction generation:
+
+```bash
+python scripts/evaluate_holdout.py
+```
+
+This reads the final 24 actual target observations for evaluation
+and does not modify `predictions.csv`.
+
+## Modeling and validation
+
+Three expanding-window folds evaluate the same 24-step horizon:
+
+| Fold | Training observations | Validation observations |
+|---|---:|---:|
+| 1 | 38 | 24 |
+| 2 | 62 | 24 |
+| 3 | 86 | 24 |
+
+Compared approaches:
+- Last-value persistence
+- 12-step moving average
+- 24-step linear trend
+- Direct multi-output Ridge regression
+
+The 12-step moving average was selected for CPU forecasting based
+on training-only validation.
+
+VM-count persistence was selected because the curated population
+remains at 10,000 VMs throughout the observed training window.
+
+## Operational recommendation
+
+Do not automatically remove cloud capacity based only on low average
+CPU utilization.
+
+Monitor:
+- Forecasted fleet-average CPU
+- VM-level high-utilization share
+- Workload categories and resource buckets
+- Deviations from forecast and operational headroom
+
+A threshold near forecast plus twice the validation RMSE can be used
+as an initial monitoring heuristic, not as a calibrated uncertainty
+interval or automatic scaling policy.
+
+## Reports and outputs
+
+- `reports/final_report.md`: technical report and recommendations
+- `reports/figures/`: training-window visualizations
+- `predictions.csv`: required 24-step forecast
+- `scripts/`: data preparation, modeling, and evaluation scripts
+- `tests/`: automated tests
+
+## Limitations
+
+The trace covers a short observation window and has no observed
+VM-count churn. Forecast results should not be generalized to
+longer horizons or different infrastructure without further testing.
+
+The aggregate CPU target is unweighted across VMs and is not a
+direct measurement of total physical core utilization.
+
+## References
+
+- [Atomity assignment](ASSIGNMENT.md)
+- [Dataset contract](DATASET.md)
+- [Submission requirements](SUBMISSION.md)
+- [Microsoft Azure Public Dataset](https://github.com/Azure/AzurePublicDataset)
+
